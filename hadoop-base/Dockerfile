@@ -40,9 +40,10 @@ RUN ln -s /opt/hadoop-$HADOOP_VERSION-src /opt/hadoop-src && cd /opt/hadoop-src 
     && sed -ri 's#^(include_directories.*)#\1\n    /usr/include/tirpc#' hadoop-tools/hadoop-pipes/src/CMakeLists.txt \
     && sed -ri 's/^( *pthread)/\1\n    tirpc/g' hadoop-tools/hadoop-pipes/src/CMakeLists.txt
 
+# Not needed with openssl@3.8
 #solving error compiling against openssl 1.1.0 https://issues.apache.org/jira/browse/HADOOP-14597
-COPY HADOOP-14597.04.patch /opt/
-RUN cd /opt/hadoop-src/ && patch -p1 < ../HADOOP-14597.04.patch
+#COPY HADOOP-14597.04.patch /opt/
+#RUN cd /opt/hadoop-src/ && patch -p1 < ../HADOOP-14597.04.patch
 RUN cd /opt/hadoop-src && mvn package -f hadoop-common-project -Pdist,native -DskipTests -DskipDocs -Dtar
 RUN cd /opt/hadoop-src && mvn package -f hadoop-hdfs-project -Pdist,native -DskipTests -DskipDocs -Dtar
 RUN cd /opt/hadoop-src && mvn package -f hadoop-mapreduce-project -Pdist,native -DskipTests -DskipDocs -Dtar
@@ -58,14 +59,18 @@ FROM openjdk:8-jre-alpine as hadoop-base
 LABEL maintainer="cgiraldo@gradiant.org" \
       organization="gradiant.org"
 
-ARG VERSION=3.1.2
-ENV HADOOP_VERSION=$VERSION \
+ARG version=2.7.7
+ENV HADOOP_VERSION=$version \
     HADOOP_HOME=/opt/hadoop
 
 ENV HADOOP_PREFIX=$HADOOP_HOME \
     HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop \
     PATH=$PATH:$HADOOP_HOME/bin \
     MULTIHOMED_NETWORK=1
+
+COPY --from=builder /opt/hadoop /opt/hadoop
+
+COPY entrypoint.sh /entrypoint.sh
 
 RUN echo "@3.8 http://dl-cdn.alpinelinux.org/alpine/v3.8/main" >> /etc/apk/repositories && \
     apk add --no-cache \
@@ -79,13 +84,9 @@ RUN echo "@3.8 http://dl-cdn.alpinelinux.org/alpine/v3.8/main" >> /etc/apk/repos
         libtirpc \
         snappy \
         zlib \
-        zstd \
+        zstd-dev \
         curl && \
-    # cp $HADOOP_CONF_DIR/mapred-site.xml.template $HADOOP_CONF_DIR/mapred-site.xml && \
+    cp $HADOOP_CONF_DIR/mapred-site.xml.template $HADOOP_CONF_DIR/mapred-site.xml && \
     mkdir -p /logs
-
-COPY --from=builder /opt/hadoop /opt/hadoop
-
-COPY entrypoint.sh /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
