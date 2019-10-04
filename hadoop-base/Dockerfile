@@ -9,10 +9,9 @@ ENV HADOOP_VERSION=$VERSION
 RUN apk add --no-cache bash build-base maven autoconf automake libtool cmake zlib-dev libressl-dev fts-dev  libtirpc-dev && mkdir -p /opt
 # Building Protobuf 2.5.0
 RUN cd /opt && wget https://github.com/google/protobuf/releases/download/v2.5.0/protobuf-2.5.0.tar.gz && \
-  tar xvf protobuf-2.5.0.tar.gz && cd protobuf-2.5.0 && ./autogen.sh && ./configure --prefix=/usr && \
+  tar xvf protobuf-2.5.0.tar.gz && wget -O protobuf-2.5.0-arm64.patch https://www.dropbox.com/s/713wql5cw9dfxhx/protobuf-2.5.0-arm64.patch?dl=0 && \
+  cd protobuf-2.5.0 && patch -p1 < ../protobuf-2.5.0-arm64.patch && ./autogen.sh && ./configure --prefix=/usr && \
   make && make install
-
-# building hadoop
 
 RUN wget -qO- http://apache.rediris.es/hadoop/common/hadoop-2.7.7/hadoop-2.7.7-src.tar.gz | tar xvz -C /opt
 RUN ln -s /opt/hadoop-2.7.7-src /opt/hadoop-src && cd /opt/hadoop-src && \
